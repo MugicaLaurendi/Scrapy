@@ -13,10 +13,6 @@ class CategoryItem(scrapy.Item):
     parent_url = scrapy.Field()
     has_products = scrapy.Field()  # 0 ou 1
 
-class ProductListItem(scrapy.Item):
-    category_slug = scrapy.Field()
-    url = scrapy.Field()           # page listant les produits
-
 class ProductItem(scrapy.Item):
     product_slug = scrapy.Field()
     url = scrapy.Field()
