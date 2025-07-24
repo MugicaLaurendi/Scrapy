@@ -9,6 +9,7 @@ class CategoryItem(scrapy.Item):
 
 
 class ProductItem(scrapy.Item):
+    sku = scrapy.Field()
     title = scrapy.Field()
     url = scrapy.Field()
     price = scrapy.Field()

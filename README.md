@@ -43,5 +43,5 @@ Les items associés:
     - **url**: url du produit
     - **category**: catégorie du produit
     - **subcategory**: sous-catégorie du produit
+    - **sub_subcategory**: sous sous-catégorie du produit
     - **sku**: référence unique du produit
-    - **stock**: stock du produit
