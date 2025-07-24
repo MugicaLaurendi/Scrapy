@@ -2,13 +2,14 @@ import scrapy
 import csv
 import os
 from bricodepot_scraper.items import ProductItem  # adapte le chemin
+import logging
 
 class ProductsSpider(scrapy.Spider):
     name = 'products'
     allowed_domains = ['bricodepot.fr']
 
     custom_settings = {
-        'FEED_EXPORT_FIELDS': ['title', 'url', 'price', 'stock', 'category', 'subcategory', 'sub_subcategory'],
+        'FEED_EXPORT_FIELDS': ['sku', 'title', 'url', 'price', 'category', 'subcategory', 'sub_subcategory'],
         'FEEDS': {
             'products1.csv': {
                 'format': 'csv',
@@ -32,31 +33,41 @@ class ProductsSpider(scrapy.Spider):
                     'subcategory': row.get('subcategory', ''),
                     'sub_subcategory': row.get('sub_subcategory', ''),
                 }
-                yield scrapy.Request(url=url, callback=self.parse_products, meta=meta)
+                yield scrapy.Request(url=url, callback=self.reach_page_product, meta=meta)
 
+    def reach_page_product(self, response):
+        logging.warning("this is resposne meta", response.meta.get('category'))
+        meta = {
+                    'category': response.meta.get('category'),
+                    'subcategory': response.meta.get('subcategory'),
+                    'sub_subcategory': response.meta.get('sub_subcategory')
+                }
+        links = response.css('div.bd-ProductsListItem-link::attr(data-href)').getall()
+
+        for link in links:
+                yield response.follow(link, self.parse_products, meta=meta)
+
+    
     def parse_products(self, response):
-        product_blocks = response.css('div.bd-ProductsListItem')
+        product_blocks = response.css('div.bd-Container')
 
         for block in product_blocks:
-            product_url = block.css('div.bd-ProductsListItem-link::attr(data-href)').get()
-            product_url = response.urljoin(product_url) if product_url else None
+            sku = block.css('span.bd-ProductDetails-tableDesc::text').get()
 
-            title = block.css('h3.bd-ProductsListItem-title::text').get()
+            product_url = response.url
+
+            title = block.css('h1.bd-ProductCard-title span::text').get()
             title = title.strip() if title else None
 
-
-            price_main = block.css('span.bd-Price-current::text').get()
-            price_sup = block.css('sup.bd-Price-currentSup::text').get()
+            price_main = block.css('div.bd-price-container span::text').get()
+            price_sup = block.css('div.bd-price-container sup::text').get()
             price = f"{price_main}{price_sup}".strip() if price_main else None
 
-            stock_text = block.css('div.bd-ProductsListItem-stock span::text').get()
-            stock = stock_text.strip() if stock_text else None
-
             item = ProductItem(
+                sku=sku,
                 title=title,
                 url=product_url,
                 price=price,
-                stock=stock,
                 category=response.meta.get('category'),
                 subcategory=response.meta.get('subcategory'),
                 sub_subcategory=response.meta.get('sub_subcategory'),
