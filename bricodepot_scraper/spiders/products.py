@@ -1,14 +1,16 @@
 import scrapy
 import csv
 import os
+from bricodepot_scraper.items import ProductItem  # adapte le chemin
 
 class ProductsSpider(scrapy.Spider):
     name = 'products'
     allowed_domains = ['bricodepot.fr']
+
     custom_settings = {
-        # Optionnel : changer output file
+        'FEED_EXPORT_FIELDS': ['title', 'url', 'price', 'stock', 'category', 'subcategory', 'sub_subcategory'],
         'FEEDS': {
-            'products.csv': {
+            'products1.csv': {
                 'format': 'csv',
                 'encoding': 'utf8',
             },
@@ -26,8 +28,9 @@ class ProductsSpider(scrapy.Spider):
             for row in reader:
                 url = row['url']
                 meta = {
-                    'category': row['category'],
-                    'subcategory': row['subcategory'],
+                    'category': row.get('category', ''),
+                    'subcategory': row.get('subcategory', ''),
+                    'sub_subcategory': row.get('sub_subcategory', ''),
                 }
                 yield scrapy.Request(url=url, callback=self.parse_products, meta=meta)
 
@@ -41,7 +44,6 @@ class ProductsSpider(scrapy.Spider):
             title = block.css('h3.bd-ProductsListItem-title::text').get()
             title = title.strip() if title else None
 
-            image = block.css('img.bd-ProductsListItem-picture::attr(src)').get()
 
             price_main = block.css('span.bd-Price-current::text').get()
             price_sup = block.css('sup.bd-Price-currentSup::text').get()
@@ -50,15 +52,17 @@ class ProductsSpider(scrapy.Spider):
             stock_text = block.css('div.bd-ProductsListItem-stock span::text').get()
             stock = stock_text.strip() if stock_text else None
 
-            yield {
-                'title': title,
-                'url': product_url,
-                'image': image,
-                'price': price,
-                'stock': stock,
-                'category': response.meta.get('category'),
-                'subcategory': response.meta.get('subcategory'),
-            }
+            item = ProductItem(
+                title=title,
+                url=product_url,
+                price=price,
+                stock=stock,
+                category=response.meta.get('category'),
+                subcategory=response.meta.get('subcategory'),
+                sub_subcategory=response.meta.get('sub_subcategory'),
+            )
+
+            yield item
 
         # Pagination
         total = response.css('div.bd-ProductsList::attr(data-total-count)').get()
