@@ -9,3 +9,7 @@ ROBOTSTXT_OBEY = True
 FEED_EXPORT_ENCODING = 'utf-8'
 
 
+ITEM_PIPELINES = {
+    'bricodepot_scraper.pipelines.RemoveDuplicatePipeline': 200,
+    'bricodepot_scraper.pipelines.EuroToFloatPipeline': 300,
+}

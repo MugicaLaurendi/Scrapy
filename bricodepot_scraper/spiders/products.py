@@ -2,7 +2,6 @@ import scrapy
 import csv
 import os
 from bricodepot_scraper.items import ProductItem  # adapte le chemin
-import logging
 
 class ProductsSpider(scrapy.Spider):
     name = 'products'
@@ -36,7 +35,7 @@ class ProductsSpider(scrapy.Spider):
                 yield scrapy.Request(url=url, callback=self.reach_page_product, meta=meta)
 
     def reach_page_product(self, response):
-        logging.warning("this is resposne meta", response.meta.get('category'))
+
         meta = {
                     'category': response.meta.get('category'),
                     'subcategory': response.meta.get('subcategory'),
@@ -45,7 +44,23 @@ class ProductsSpider(scrapy.Spider):
         links = response.css('div.bd-ProductsListItem-link::attr(data-href)').getall()
 
         for link in links:
-                yield response.follow(link, self.parse_products, meta=meta)
+            yield response.follow(link, self.parse_products, meta=meta)
+
+                # Pagination
+        total = response.css('div.bd-ProductsList::attr(data-total-count)').get()
+        total = int(total)
+        print(total)
+        current_page = int(response.css('div.bd-Products::attr(data-page-num)').get(default='1'))
+        page_size = int(response.css('div.bd-Products::attr(data-page-size)').get(default='50'))
+
+        if total and current_page * page_size < total:
+            next_page = current_page + 1
+            next_url = response.url.split('?')[0] + f'?page={next_page}'
+            yield scrapy.Request(
+                url=next_url,
+                callback=self.parse_products,
+                meta=response.meta
+            )
 
     
     def parse_products(self, response):
@@ -75,17 +90,4 @@ class ProductsSpider(scrapy.Spider):
 
             yield item
 
-        # Pagination
-        total = response.css('div.bd-ProductsList::attr(data-total-count)').get()
-        total = int(total) if total else None
-        current_page = int(response.css('div.bd-Products::attr(data-page-num)').get(default='1'))
-        page_size = int(response.css('div.bd-Products::attr(data-page-size)').get(default='50'))
 
-        if total and current_page * page_size < total:
-            next_page = current_page + 1
-            next_url = response.url.split('?')[0] + f'?page={next_page}'
-            yield scrapy.Request(
-                url=next_url,
-                callback=self.parse_products,
-                meta=response.meta
-            )
