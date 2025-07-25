@@ -8,6 +8,7 @@ ROBOTSTXT_OBEY = True
 
 FEED_EXPORT_ENCODING = 'utf-8'
 
+AUTOTHROTTLE_ENABLED = True
 
 ITEM_PIPELINES = {
     'bricodepot_scraper.pipelines.RemoveDuplicatePipeline': 200,

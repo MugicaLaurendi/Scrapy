@@ -2,6 +2,7 @@ import scrapy
 import csv
 import os
 from bricodepot_scraper.items import ProductItem  # adapte le chemin
+import logging
 
 class ProductsSpider(scrapy.Spider):
     name = 'products'
@@ -46,48 +47,39 @@ class ProductsSpider(scrapy.Spider):
         for link in links:
             yield response.follow(link, self.parse_products, meta=meta)
 
-                # Pagination
-        total = response.css('div.bd-ProductsList::attr(data-total-count)').get()
-        total = int(total)
-        print(total)
-        current_page = int(response.css('div.bd-Products::attr(data-page-num)').get(default='1'))
-        page_size = int(response.css('div.bd-Products::attr(data-page-size)').get(default='50'))
+        
+        url_nextpage = response.css('a.bd-Paging-link.bd-Icon.bd-Icon--sliderRight::attr(href)').get()
+        print("NEXT PAGE ?", url_nextpage)
+        current_page = response.css('a.bd-Paging-link.bd-Icon.bd-Icon--sliderRight::attr(data-num)').get()
+        print(f"current_page : {current_page}")
 
-        if total and current_page * page_size < total:
-            next_page = current_page + 1
-            next_url = response.url.split('?')[0] + f'?page={next_page}'
-            yield scrapy.Request(
-                url=next_url,
-                callback=self.parse_products,
-                meta=response.meta
-            )
+        if url_nextpage :
+            logging.info(" -------------------------- NEXT PAGE --------------------------------")
+            url_nextpage = "https://www.bricodepot.fr" + url_nextpage
+            yield scrapy.Request(url=url_nextpage, callback=self.reach_page_product, meta=response.meta)
 
-    
+
     def parse_products(self, response):
-        product_blocks = response.css('div.bd-Container')
+        sku = response.css('span.bd-ProductDetails-tableDesc::text').get()
 
-        for block in product_blocks:
-            sku = block.css('span.bd-ProductDetails-tableDesc::text').get()
+        product_url = response.url
 
-            product_url = response.url
+        title = response.css('h1.bd-ProductCard-title span::text').get()
+        title = title.strip() if title else None
 
-            title = block.css('h1.bd-ProductCard-title span::text').get()
-            title = title.strip() if title else None
+        price_main = response.css('div.bd-price-container span::text').get()
+        price_sup = response.css('div.bd-price-container sup::text').get()
+        price = f"{price_main}{price_sup}".strip() if price_main else None
 
-            price_main = block.css('div.bd-price-container span::text').get()
-            price_sup = block.css('div.bd-price-container sup::text').get()
-            price = f"{price_main}{price_sup}".strip() if price_main else None
+        item = ProductItem(
+            sku=sku,
+            title=title,
+            url=product_url,
+            price=price,
+            category=response.meta.get('category'),
+            subcategory=response.meta.get('subcategory'),
+            sub_subcategory=response.meta.get('sub_subcategory'),
+        )
 
-            item = ProductItem(
-                sku=sku,
-                title=title,
-                url=product_url,
-                price=price,
-                category=response.meta.get('category'),
-                subcategory=response.meta.get('subcategory'),
-                sub_subcategory=response.meta.get('sub_subcategory'),
-            )
-
-            yield item
-
+        yield item
 
