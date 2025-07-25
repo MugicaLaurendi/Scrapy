@@ -5,8 +5,9 @@ from scrapy.exceptions import DropItem
 class EuroToFloatPipeline:
 
     def process_item(self, item, spider):
-
-        item['price'] = float(item['price'].replace('€','.'))
+        price = item.get('price')
+        if price and spider.name != 'categories':
+            item['price'] = float(item['price'].replace('€','.'))
 
         return item
     
